@@ -11,25 +11,39 @@ from agno.agent.remote import RemoteAgent
 
 
 class _AuthenticatedRemoteAgent(RemoteAgent):
-    """A RemoteAgent that attaches a bearer token to every request.
+    """A RemoteAgent that attaches a bearer token and drops the session id.
 
-    The base RemoteAgent only accepts ``auth_token`` as a per-call argument on
-    ``run``/``arun`` — it is NOT a constructor parameter. But the Team invokes
-    members via ``arun()`` without forwarding any token, so an authenticated A2A
-    server would reject every delegated call. We store the token and inject it
-    into each call so the team's delegations carry the Authorization header.
+    Two adaptations are needed for the Team to talk to the remote A2A server:
+
+    1. Auth: the base RemoteAgent only accepts ``auth_token`` as a per-call
+       argument on ``run``/``arun`` — it is NOT a constructor parameter. The
+       Team invokes members via ``arun()`` without forwarding any token, so an
+       authenticated A2A server would reject every delegated call. We store the
+       token and inject it into each call.
+
+    2. Stateless calls: the Team passes ``session_id`` to each member, which
+       RemoteAgent maps to the A2A ``contextId``. The remote analyzer returns an
+       EMPTY task whenever a ``contextId`` is present (server-side quirk —
+       reproduced even with a brand-new id), which makes the leader receive an
+       empty result and reply "I'll get back to you" instead of the analysis.
+       We drop ``session_id`` so every delegation is a clean, stateless A2A call
+       and the agent's response actually comes back.
     """
 
     def __init__(self, *args, auth_token: str, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._auth_token = auth_token
 
-    def run(self, *args, **kwargs):  # type: ignore[override]
+    def _prepare(self, kwargs: dict) -> None:
         kwargs.setdefault("auth_token", self._auth_token)
+        kwargs.pop("session_id", None)  # maps to A2A contextId → empties response
+
+    def run(self, *args, **kwargs):  # type: ignore[override]
+        self._prepare(kwargs)
         return super().run(*args, **kwargs)
 
     def arun(self, *args, **kwargs):  # type: ignore[override]
-        kwargs.setdefault("auth_token", self._auth_token)
+        self._prepare(kwargs)
         return super().arun(*args, **kwargs)
 
 def contract_analyzer_remote() -> RemoteAgent | None:
