@@ -41,10 +41,7 @@ def contract_analyzer_remote() -> RemoteAgent | None:
       CONTRACT_REMOTE_AGENT_ID   — remote agent id
       CONTRACT_REMOTE_AGENT_TOKEN — bearer token (e.g. aak_...)
     """
-    base_url = os.getenv(
-        "CONTRACT_REMOTE_AGENT_URL",
-        "http://localhost:3002/a2a/agents/contract-clause-analyzer",
-    )
+    base_url = os.getenv("CONTRACT_REMOTE_AGENT_URL")
     agent_id = os.getenv("CONTRACT_REMOTE_AGENT_ID", "contract-clause-analyzer")
     auth_token = os.getenv("CONTRACT_REMOTE_AGENT_TOKEN")
 
@@ -58,8 +55,6 @@ def contract_analyzer_remote() -> RemoteAgent | None:
     else:
         agent = RemoteAgent(base_url=base_url, agent_id=agent_id, protocol="a2a")
 
-    # print(agent.run("Hello!"))
-
     try:
         # Touching .name fetches the remote agent card and confirms reachability.
         # For A2A a down server raises a connection error (not the agno-specific
@@ -68,7 +63,7 @@ def contract_analyzer_remote() -> RemoteAgent | None:
     except Exception:
         print(
             f"[contract-team] Remote agent unreachable at {base_url} — "
-            "running without it. Start it with: uv run contract-team-remote"
+            "running without it."
         )
         return None
     return agent

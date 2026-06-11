@@ -10,8 +10,7 @@ from dotenv import load_dotenv
 from .team import build_team
 
 DEFAULT_PROMPT = (
-    "Give me a current snapshot of NVIDIA (NVDA): latest stock price and "
-    "analyst recommendations, plus any major news from the past week."
+    "What can I do, suggest some tasks for me? I can analyze contract clauses, write code, and more!"
 )
 
 
