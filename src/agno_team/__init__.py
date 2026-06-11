@@ -1,30 +1,41 @@
-"""agno-team: a minimal, runnable example of an Agno multi-agent team."""
+"""agno-team CLI: ask the Contract Review Team to analyze a contract.
+
+The contract is passed by reference (URL). The team leader delegates to the
+remote Contract Analyzer, which fetches and analyzes the file. If that remote
+agent is unreachable, the team runs with whatever members are up.
+"""
 
 from __future__ import annotations
 
 import asyncio
-import sys
 
 from dotenv import load_dotenv
 
-from .team import build_team
+from agno_team.team import build_team
+
+CONTRACT_URL = (
+    "https://poc.viact.ai/contract-clause-analyzer/api/contracts/"
+    "cmok2wy1d000gekttf5kue19x/file"
+)
 
 DEFAULT_PROMPT = (
-    "What can I do, suggest some tasks for me? I can analyze contract clauses, write code, and more!"
+    "Review the following contract for risk. Extract the key commercial and "
+    "legal clauses, flag red flags and missing protections (liability caps, "
+    "indemnity, termination, payment terms, retention, dispute resolution, "
+    "force majeure, insurance), and finish with an overall risk rating and "
+    "the top suggested fixes.\n\n"
+    f"--- CONTRACT: {CONTRACT_URL}"
 )
 
 
 def main() -> None:
-    """CLI entrypoint: `uv run agno-team \"your question\"`."""
-    load_dotenv()  # load GOOGLE_API_KEY (and optional GEMINI_MODEL) from .env
-
-    prompt = " ".join(sys.argv[1:]).strip() or DEFAULT_PROMPT
+    """CLI entrypoint: `uv run agno-team`."""
+    load_dotenv()  # GOOGLE_API_KEY + remote agent config from .env
 
     team = build_team()
-    # Run async: a RemoteAgent member only implements arun(), so the team's
-    # async delegation path is required. The sync path would call member.run()
-    # which RemoteAgent does not provide.
-    asyncio.run(team.aprint_response(prompt, stream=True))
+    # Async path is required: a RemoteAgent member only implements arun(), and
+    # aprint_response is a coroutine — it must be awaited or nothing executes.
+    asyncio.run(team.aprint_response(DEFAULT_PROMPT, stream=True))
 
 
 __all__ = ["build_team", "main"]
